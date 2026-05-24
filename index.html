@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>보이드 부대</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #1a1a2e; color: #eee; font-family: 'Malgun Gothic', sans-serif; overflow: hidden; }
+
+/* 로그인 화면 */
+#loginScreen {
+  position: fixed; inset: 0; background: #0d0d1a;
+  display: flex; align-items: center; justify-content: center; z-index: 100;
+  flex-direction: column; gap: 12px;
+}
+#loginScreen h1 { font-size: 28px; color: #4ade80; margin-bottom: 8px; }
+#loginScreen input {
+  width: 280px; padding: 10px 14px; border-radius: 8px;
+  border: 1px solid #444; background: #1a1a2e; color: #eee; font-size: 14px;
+}
+#loginScreen button {
+  width: 280px; padding: 10px; border-radius: 8px; border: none;
+  background: #16a34a; color: white; font-size: 15px; cursor: pointer; font-weight: bold;
+}
+#loginScreen button:hover { background: #15803d; }
+#loginScreen .tab-btns { display: flex; gap: 8px; }
+#loginScreen .tab-btns button { width: 136px; background: #374151; font-size: 13px; font-weight: normal; }
+#loginScreen .tab-btns button.active { background: #1d4ed8; }
+
+/* HUD */
+#hud {
+  position: fixed; top: 0; left: 0; right: 0; height: 48px;
+  background: rgba(0,0,0,0.85); display: flex; align-items: center;
+  padding: 0 12px; gap: 12px; z-index: 50; border-bottom: 1px solid #333;
+}
+#hud .rank-badge {
+  background: #1d4ed8; padding: 3px 10px; border-radius: 12px;
+  font-size: 13px; font-weight: bold;
+}
+#hud .name { font-size: 14px; }
+#hud .coins { color: #fbbf24; font-size: 13px; }
+#hud .playtime { color: #94a3b8; font-size: 12px; }
+#hud .wanted-badge {
+  background: #dc2626; padding: 3px 10px; border-radius: 12px;
+  font-size: 12px; animation: pulse 1s infinite;
+}
+#hud .cuffed-badge {
+  background: #7c3aed; padding: 3px 10px; border-radius: 12px; font-size: 12px;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+#hud .kills { color: #f87171; font-size: 12px; }
+#hud .spacer { flex: 1; }
+#hud button {
+  padding: 4px 10px; border-radius: 6px; border: none; cursor: pointer; font-size: 12px;
+}
+#hudLogout { background: #374151; color: #eee; }
+#hudAdmin { background: #7c3aed; color: white; }
+
+/* 게임 캔버스 */
+#gameCanvas { display: block; position: fixed; top: 48px; left: 0; }
+
+/* 미니맵 */
+#minimap {
+  position: fixed; bottom: 12px; right: 12px;
+  width: 160px; height: 100px; background: rgba(0,0,0,0.7);
+  border: 1px solid #555; border-radius: 6px; z-index: 50;
+}
+
+/* 상호작용 버튼 */
+#interactBtn {
+  position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%);
+  padding: 10px 24px; background: #16a34a; color: white; border: none;
+  border-radius: 20px; font-size: 15px; cursor: pointer; z-index: 50;
+  display: none; font-weight: bold;
+}
+
+/* 알림 토스트 */
+#toast {
+  position: fixed; top: 60px; left: 50%; transform: translateX(-50%);
+  padding: 10px 20px; border-radius: 8px; font-size: 14px; z-index: 200;
+  display: none; pointer-events: none;
+}
+
+/* 상점 모달 */
+#shopModal, #adminModal, #inventoryModal {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+  display: none; align-items: center; justify-content: center; z-index: 150;
+}
+.modal-box {
+  background: #1e293b; border-radius: 16px; padding: 24px;
+  width: 420px; max-width: 95vw; max-height: 80vh; overflow-y: auto;
+  border: 1px solid #334155;
+}
+.modal-box h2 { margin-bottom: 16px; font-size: 18px; }
+.modal-close {
+  float: right; background: #374151; border: none; color: #eee;
+  padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 13px;
+}
+.shop-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px; background: #0f172a; border-radius: 8px; margin-bottom: 8px;
+}
+.shop-item .item-info { font-size: 14px; }
+.shop-item .item-price { color: #fbbf24; font-size: 13px; }
+.shop-item button {
+  padding: 5px 12px; background: #16a34a; color: white;
+  border: none; border-radius: 6px; cursor: pointer; font-size: 12px;
+}
+.admin-section { margin-bottom: 16px; }
+.admin-section h3 { font-size: 14px; color: #94a3b8; margin-bottom: 8px; }
+.admin-section input, .admin-section select {
+  width: 100%; padding: 8px; background: #0f172a; border: 1px solid #334155;
+  border-radius: 6px; color: #eee; font-size: 13px; margin-bottom: 6px;
+}
+.admin-section button {
+  padding: 6px 14px; border: none; border-radius: 6px;
+  cursor: pointer; font-size: 13px; margin-right: 6px; margin-bottom: 4px;
+}
+.btn-warn { background: #b45309; color: white; }
+.btn-unwarn { background: #0369a1; color: white; }
+.btn-rank { background: #7c3aed; color: white; }
+.btn-kick { background: #dc2626; color: white; }
+.player-list-item {
+  display: flex; align-items: center; gap: 8px; padding: 6px;
+  background: #0f172a; border-radius: 6px; margin-bottom: 4px; font-size: 13px;
+}
+.player-list-item .p-rank { color: #60a5fa; font-size: 11px; }
+</style>
+<!-- Firebase compat SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+<!-- 로그인 화면 -->
+<div id="loginScreen">
+  <h1>🪖 보이드 부대</h1>
+  <div class="tab-btns">
+    <button id="tabLogin" class="active">로그인</button>
+    <button id="tabRegister">회원가입</button>
+  </div>
+  <input type="text" id="nicknameInput" placeholder="닉네임" style="display:none">
+  <input type="email" id="emailInput" placeholder="이메일">
+  <input type="password" id="passwordInput" placeholder="비밀번호">
+  <button id="authBtn">로그인</button>
+  <div id="authError" style="color:#f87171;font-size:13px;"></div>
+</div>
+
+<!-- HUD -->
+<div id="hud" style="display:none">
+  <span class="rank-badge" id="hudRank">시민</span>
+  <span class="name" id="hudName"></span>
+  <span class="coins">💰 <span id="hudCoins">0</span></span>
+  <span class="playtime">⏱ <span id="hudTime">0분</span></span>
+  <span class="kills">🔫 사살 <span id="hudKills">0</span>회</span>
+  <span id="hudWanted" class="wanted-badge" style="display:none">🚨 지명수배</span>
+  <span id="hudCuffed" class="cuffed-badge" style="display:none">⛓ 수갑</span>
+  <span class="spacer"></span>
+  <button id="hudInven">🎒 인벤</button>
+  <button id="hudAdmin" style="display:none">⚙ 관리</button>
+  <button id="hudLogout">로그아웃</button>
+</div>
+
+<!-- 게임 캔버스 -->
+<canvas id="gameCanvas"></canvas>
+<canvas id="minimap"></canvas>
+
+<!-- 상호작용 버튼 -->
+<button id="interactBtn">[ F ] 상호작용</button>
+
+<!-- 토스트 -->
+<div id="toast"></div>
+
+<!-- 황금마차 상점 -->
+<div id="shopModal">
+  <div class="modal-box">
+    <button class="modal-close" id="shopClose">✕ 닫기</button>
+    <h2>🛒 황금마차</h2>
+    <div id="shopItems"></div>
+  </div>
+</div>
+
+<!-- 인벤토리 -->
+<div id="inventoryModal">
+  <div class="modal-box">
+    <button class="modal-close" id="inventoryClose">✕ 닫기</button>
+    <h2>🎒 인벤토리</h2>
+    <div id="inventoryItems"></div>
+  </div>
+</div>
+
+<!-- 관리자 패널 -->
+<div id="adminModal">
+  <div class="modal-box">
+    <button class="modal-close" id="adminClose">✕ 닫기</button>
+    <h2>⚙ 관리자 패널</h2>
+    <div class="admin-section">
+      <h3>접속 중인 플레이어</h3>
+      <div id="adminPlayerList"></div>
+    </div>
+    <div class="admin-section">
+      <h3>플레이어 관리</h3>
+      <input type="text" id="adminTargetUid" placeholder="대상 UID 또는 닉네임">
+      <select id="adminRankSelect"></select>
+      <button class="btn-rank" id="adminSetRank">계급 변경</button>
+      <button class="btn-warn" id="adminWarn">경고 +1</button>
+      <button class="btn-unwarn" id="adminUnwarn">경고 -1</button>
+      <button class="btn-kick" id="adminSetWanted">지명수배</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========================
+// Firebase 초기화
+// ========================
+const firebaseConfig = {
+  apiKey: "AIzaSyChBIedwMNcpsPxkfQRgtGKzgzgLlVDz1k",
+  authDomain: "voidboodae.firebaseapp.com",
+  projectId: "voidboodae",
+  storageBucket: "voidboodae.firebasestorage.app",
+  messagingSenderId: "413108546200",
+  appId: "1:413108546200:web:bc96a8fa8e442e4c20feed"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// ========================
+// 계급 데이터
+// ========================
+const RANKS = [
+  // 사령부
+  { id: 'citizen',   name: '시민',        group: '비사령부', order: 0 },
+  { id: 'army',      name: '육군',        group: '비사령부', order: 1 },
+  { id: 'cook',      name: '취사병',      group: '비사령부', order: 2 },
+  { id: 'medic',     name: '의무병',      group: '비사령부', order: 3 },
+  { id: 'mp',        name: '군사경찰',    group: '비사령부', order: 4, canCuff: true },
+  { id: 'special2',  name: '특임대',      group: '비사령부', order: 5, canCuff: true },
+  { id: 'special1',  name: '특전사',      group: '비사령부', order: 6, canCuff: true },
+  { id: 'assistant', name: '조교',        group: '비사령부', order: 7, canCuff: true },
+  { id: 'instructor',name: '교관',        group: '비사령부', order: 8, canCuff: true },
+  { id: 'nco_bis',   name: '부사관',      group: '비사령부', order: 9, canCuff: true },
+  { id: 'officer_b', name: '장교',        group: '비사령부', order: 10, canCuff: true },
+  // 병사
+  { id: 'pvt2',      name: '이등병',      group: '병사',     order: 11, requiredMinutes: 20 },
+  { id: 'pvt1',      name: '일등병',      group: '병사',     order: 12, requiredMinutes: 40 },
+  { id: 'cpl',       name: '상등병',      group: '병사',     order: 13, requiredMinutes: 60 },
+  { id: 'sgt',       name: '병장',        group: '병사',     order: 14, requiredMinutes: 120 },
+  // 부사관
+  { id: 'sgt2',      name: '하사',        group: '부사관',   order: 15, requiredMinutes: 180, requiredKills: 3 },
+  { id: 'sgt1',      name: '중사',        group: '부사관',   order: 16, requiredMinutes: 300, requiredKills: 6 },
+  { id: 'msgt',      name: '상사',        group: '부사관',   order: 17, requiredMinutes: 450, requiredKills: 9 },
+  // 위관급
+  { id: '2lt',       name: '소위',        group: '위관급',   order: 18, requiredMinutes: 660, requiredKills: 12 },
+  { id: '1lt',       name: '중위',        group: '위관급',   order: 19, requiredMinutes: 960, requiredKills: 16 },
+  { id: 'cpt',       name: '대위',        group: '위관급',   order: 20, requiredMinutes: 1440, requiredKills: 20 },
+  // 영관급
+  { id: 'maj',       name: '소령',        group: '영관급',   order: 21 },
+  { id: 'ltcol',     name: '중령',        group: '영관급',   order: 22 },
+  { id: 'col',       name: '대령',        group: '영관급',   order: 23 },
+  // 특수
+  { id: 'hq',        name: '육군본부',    group: '특수',     order: 24, isAdmin: true },
+  { id: 'minister',  name: '국방부장관',  group: '특수',     order: 25, isAdmin: true },
+  { id: 'president', name: '육군통수권자',group: '특수',     order: 26, isAdmin: true },
+  { id: 'dev',       name: '개발자',      group: '특수',     order: 27, isAdmin: true },
+];
+
+const RANK_MAP = {};
+RANKS.forEach(r => RANK_MAP[r.id] = r);
+
+function getRank(id) { return RANK_MAP[id] || RANK_MAP['citizen']; }
+function canAdmin(rankId) {
+  const r = getRank(rankId);
+  return r.isAdmin || rankId === 'dev' || rankId === 'president' || rankId === 'hq' || rankId === 'minister';
+}
+function canCuff(rankId) { return getRank(rankId).canCuff || canAdmin(rankId); }
+
+// ========================
+// 상점 아이템
+// ========================
+const SHOP_ITEMS = [
+  { id: 'snack1', name: '새우깡', price: 50, emoji: '🍿' },
+  { id: 'snack2', name: '빼빼로', price: 80, emoji: '🍫' },
+  { id: 'snack3', name: '포카칩', price: 60, emoji: '🥔' },
+  { id: 'snack4', name: '초코파이', price: 100, emoji: '🎂' },
+  { id: 'snack5', name: '칸초',   price: 70, emoji: '🍪' },
+  { id: 'drink1', name: '박카스', price: 40, emoji: '🧃' },
+  { id: 'drink2', name: '커피믹스', price: 30, emoji: '☕' },
+];
+
+// ========================
+// 맵 설정
+// ========================
+const TILE = 40;
+const MAP_W = 60;
+const MAP_H = 35;
+
+// 맵 타일: 0=잔디, 1=벽, 2=도로, 3=빨간선, 4=물
+const MAP_DATA = [];
+
+function buildMap() {
+  for (let y = 0; y < MAP_H; y++) {
+    MAP_DATA[y] = [];
+    for (let x = 0; x < MAP_W; x++) {
+      MAP_DATA[y][x] = 0; // 기본 잔디
+    }
+  }
+  // 외벽
+  for (let x = 0; x < MAP_W; x++) { MAP_DATA[0][x] = 1; MAP_DATA[MAP_H-1][x] = 1; }
+  for (let y = 0; y < MAP_H; y++) { MAP_DATA[y][0] = 1; MAP_DATA[y][MAP_W-1] = 1; }
+
+  // 빨간선 (x=22 세로)
+  for (let y = 1; y < MAP_H-1; y++) MAP_DATA[y][22] = 3;
+
+  // 도로 (시민 구역)
+  for (let x = 1; x < 22; x++) MAP_DATA[17][x] = 2;
+  for (let y = 10; y < MAP_H-1; y++) MAP_DATA[y][11] = 2;
+
+  // 도로 (부대 구역)
+  for (let x = 23; x < MAP_W-1; x++) MAP_DATA[17][x] = 2;
+  for (let y = 10; y < MAP_H-1; y++) MAP_DATA[y][38] = 2;
+
+  // 시민 건물들 (벽으로 표현)
+  // 집 1
+  for (let y = 3; y < 9; y++) for (let x = 2; x < 8; x++) MAP_DATA[y][x] = 1;
+  for (let y = 4; y < 8; y++) for (let x = 3; x < 7; x++) MAP_DATA[y][x] = 0; // 내부
+  MAP_DATA[8][4] = 2; MAP_DATA[8][5] = 2; // 출입구
+  // 집 2
+  for (let y = 3; y < 9; y++) for (let x = 12; x < 18; x++) MAP_DATA[y][x] = 1;
+  for (let y = 4; y < 8; y++) for (let x = 13; x < 17; x++) MAP_DATA[y][x] = 0;
+  MAP_DATA[8][14] = 2; MAP_DATA[8][15] = 2;
+  // 집 3
+  for (let y = 20; y < 26; y++) for (let x = 2; x < 8; x++) MAP_DATA[y][x] = 1;
+  for (let y = 21; y < 25; y++) for (let x = 3; x < 7; x++) MAP_DATA[y][x] = 0;
+  MAP_DATA[20][4] = 2; MAP_DATA[20][5] = 2;
+
+  // 부대 건물들
+  // 막사
+  for (let y = 3; y < 10; y++) for (let x = 24; x < 36; x++) MAP_DATA[y][x] = 1;
+  for (let y = 4; y < 9; y++) for (let x = 25; x < 35; x++) MAP_DATA[y][x] = 0;
+  MAP_DATA[9][28] = 2; MAP_DATA[9][29] = 2; MAP_DATA[9][30] = 2;
+  // 훈련장
+  for (let y = 20; y < 30; y++) for (let x = 24; x < 44; x++) MAP_DATA[y][x] = 2;
+  // 훈련장 벽
+  for (let x = 24; x < 44; x++) { MAP_DATA[20][x] = 1; MAP_DATA[29][x] = 1; }
+  for (let y = 20; y < 30; y++) { MAP_DATA[y][24] = 1; MAP_DATA[y][43] = 1; }
+  MAP_DATA[29][33] = 2; MAP_DATA[29][34] = 2; // 출입구
+
+  // 입대소 (빨간선 바로 오른쪽)
+  for (let y = 14; y < 21; y++) for (let x = 23; x < 30; x++) MAP_DATA[y][x] = 1;
+  for (let y = 15; y < 20; y++) for (let x = 24; x < 29; x++) MAP_DATA[y][x] = 2;
+  MAP_DATA[20][25] = 2; MAP_DATA[20][26] = 2;
+
+  // 물 (장식)
+  for (let y = 10; y < 16; y++) for (let x = 2; x < 6; x++) MAP_DATA[y][x] = 4;
+}
+
+buildMap();
+
+// 특수 위치
+const LOCATIONS = {
+  enlist: { x: 26, y: 17, label: '입대소', hint: '입대하기' },
+  atm1:   { x: 9,  y: 16, label: 'ATM', hint: 'ATM 사용 (+30코인, 지명수배 위험)' },
+  atm2:   { x: 19, y: 12, label: 'ATM', hint: 'ATM 사용 (+30코인, 지명수배 위험)' },
+  shop:   { x: 14, y: 16, label: '🛒황금마차', hint: '간식 구매' },
+};
+
+// ========================
+// 게임 상태
+// ========================
+let myUid = null;
+let myData = null;
+let players = {}; // uid -> {x, y, nickname, rank, wanted, cuffed, ...}
+let myX = 5, myY = 17; // 기본 시작 위치 (시민구역)
+let keys = {};
+let lastMoveTime = 0;
+let playTimer = null;
+let sessionMinutes = 0;
+let unsubPlayers = null;
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const miniCanvas = document.getElementById('minimap');
+const miniCtx = miniCanvas.getContext('2d');
+
+// 화면 크기
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight - 48;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// ========================
+// 렌더링
+// ========================
+const COLORS = {
+  0: '#2d5a27', // 잔디
+  1: '#4a4a4a', // 벽
+  2: '#6b6b6b', // 도로
+  3: '#dc2626', // 빨간선
+  4: '#1e40af', // 물
+};
+
+function getTileColor(t) { return COLORS[t] || '#2d5a27'; }
+
+let camX = 0, camY = 0;
+
+function render() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // 카메라 중심 = 내 캐릭터
+  const px = players[myUid];
+  if (px) {
+    camX = px.x * TILE - canvas.width / 2 + TILE / 2;
+    camY = px.y * TILE - canvas.height / 2 + TILE / 2;
+  }
+
+  // 맵 타일
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      const sx = x * TILE - camX;
+      const sy = y * TILE - camY;
+      if (sx < -TILE || sx > canvas.width || sy < -TILE || sy > canvas.height) continue;
+      ctx.fillStyle = getTileColor(MAP_DATA[y][x]);
+      ctx.fillRect(sx, sy, TILE - 1, TILE - 1);
+    }
+  }
+
+  // 라벨 (입대소, ATM, 황금마차)
+  ctx.font = '11px Malgun Gothic';
+  ctx.textAlign = 'center';
+  Object.values(LOCATIONS).forEach(loc => {
+    const sx = loc.x * TILE - camX + TILE/2;
+    const sy = loc.y * TILE - camY - 4;
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillText(loc.label, sx, sy);
+  });
+
+  // 빨간선 텍스트
+  const redX = 22 * TILE - camX + TILE/2;
+  ctx.fillStyle = '#ff6666';
+  ctx.font = 'bold 12px Malgun Gothic';
+  ctx.fillText('⚠ 탈영선', redX, 30 - camY + MAP_H/2 * TILE / 2);
+
+  // 플레이어들
+  Object.entries(players).forEach(([uid, p]) => {
+    if (!p || p.x === undefined) return;
+    const sx = p.x * TILE - camX;
+    const sy = p.y * TILE - camY;
+
+    // 그림자
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(sx + TILE/2, sy + TILE - 4, 10, 5, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // 몸통
+    const isMe = uid === myUid;
+    const rank = getRank(p.rank || 'citizen');
+    let bodyColor = '#4ade80';
+    if (p.wanted) bodyColor = '#dc2626';
+    else if (p.cuffed) bodyColor = '#7c3aed';
+    else if (rank.group === '특수') bodyColor = '#f59e0b';
+    else if (rank.group === '영관급' || rank.group === '위관급') bodyColor = '#60a5fa';
+    else if (rank.group === '부사관') bodyColor = '#34d399';
+    else if (rank.group === '비사령부' && rank.order > 1) bodyColor = '#a78bfa';
+    else if (p.rank === 'citizen') bodyColor = '#94a3b8';
+
+    ctx.fillStyle = bodyColor;
+    ctx.beginPath();
+    ctx.roundRect(sx + 6, sy + 8, TILE - 12, TILE - 14, 6);
+    ctx.fill();
+
+    // 머리
+    ctx.fillStyle = isMe ? '#fde68a' : '#fcd34d';
+    ctx.beginPath();
+    ctx.arc(sx + TILE/2, sy + 8, 8, 0, Math.PI*2);
+    ctx.fill();
+
+    // 내 캐릭터 표시
+    if (isMe) {
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // 지명수배 아이콘
+    if (p.wanted) {
+      ctx.font = '14px serif';
+      ctx.fillText('🚨', sx + TILE/2, sy - 2);
+    } else if (p.cuffed) {
+      ctx.font = '14px serif';
+      ctx.fillText('⛓', sx + TILE/2, sy - 2);
+    }
+
+    // 닉네임 + 계급
+    ctx.font = '11px Malgun Gothic';
+    ctx.fillStyle = isMe ? '#fde68a' : '#e2e8f0';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${rank.name} ${p.nickname || ''}`, sx + TILE/2, sy + TILE + 12);
+  });
+
+  // 미니맵
+  renderMinimap();
+
+  requestAnimationFrame(render);
+}
+
+function renderMinimap() {
+  const mw = miniCanvas.width = 160;
+  const mh = miniCanvas.height = 100;
+  const scaleX = mw / (MAP_W * TILE);
+  const scaleY = mh / (MAP_H * TILE);
+  miniCtx.clearRect(0, 0, mw, mh);
+  // 배경
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      miniCtx.fillStyle = getTileColor(MAP_DATA[y][x]);
+      miniCtx.fillRect(x * TILE * scaleX, y * TILE * scaleY, TILE * scaleX + 1, TILE * scaleY + 1);
+    }
+  }
+  // 플레이어들
+  Object.entries(players).forEach(([uid, p]) => {
+    if (!p || p.x === undefined) return;
+    miniCtx.fillStyle = uid === myUid ? '#fff' : (p.wanted ? '#dc2626' : '#4ade80');
+    miniCtx.fillRect(p.x * TILE * scaleX - 2, p.y * TILE * scaleY - 2, 4, 4);
+  });
+}
+
+// ========================
+// 이동
+// ========================
+function canWalk(x, y) {
+  if (x < 0 || y < 0 || x >= MAP_W || y >= MAP_H) return false;
+  const t = MAP_DATA[y][x];
+  return t !== 1; // 벽 제외 가능
+}
+
+function movePlayer() {
+  const now = Date.now();
+  if (now - lastMoveTime < 150) return;
+  if (!myUid || !players[myUid]) return;
+
+  const p = players[myUid];
+  if (p.cuffed) return; // 수갑 차면 이동 불가
+
+  let nx = p.x, ny = p.y;
+  if (keys['w'] || keys['arrowup'])    ny--;
+  if (keys['s'] || keys['arrowdown'])  ny++;
+  if (keys['a'] || keys['arrowleft'])  nx--;
+  if (keys['d'] || keys['arrowright']) nx++;
+
+  if (nx === p.x && ny === p.y) return;
+  if (!canWalk(nx, ny)) return;
+
+  lastMoveTime = now;
+  players[myUid].x = nx;
+  players[myUid].y = ny;
+
+  // 빨간선 체크 (탈영)
+  checkDesert(nx, ny);
+
+  // 입대소 체크
+  checkEnlist(nx, ny);
+
+  // 상호작용 버튼
+  checkInteract(nx, ny);
+
+  // Firestore 위치 업데이트
+  db.collection('players').doc(myUid).update({
+    x: nx, y: ny, lastSeen: firebase.firestore.FieldValue.serverTimestamp()
+  }).catch(() => {});
+}
+
+function checkDesert(x, y) {
+  const myRank = players[myUid]?.rank || 'citizen';
+  // 빨간선(x=22) 왼쪽으로 넘어가면 탈영 (부대 소속이어야)
+  if (x <= 22 && myRank !== 'citizen') {
+    setWanted(myUid, true);
+    showToast('🚨 탈영 감지! 지명수배 처리되었습니다.', 'error');
+  }
+}
+
+function checkEnlist(x, y) {
+  const loc = LOCATIONS.enlist;
+  const myRank = players[myUid]?.rank || 'citizen';
+  if (Math.abs(x - loc.x) <= 2 && Math.abs(y - loc.y) <= 2 && myRank === 'citizen') {
+    // 입대소 범위 안
+  }
+}
+
+function checkInteract(x, y) {
+  let found = null;
+  Object.entries(LOCATIONS).forEach(([key, loc]) => {
+    if (Math.abs(x - loc.x) <= 1 && Math.abs(y - loc.y) <= 1) {
+      found = { key, ...loc };
+    }
+  });
+  const btn = document.getElementById('interactBtn');
+  if (found) {
+    btn.style.display = 'block';
+    btn.textContent = `[ F ] ${found.hint}`;
+    btn._location = found.key;
+  } else {
+    btn.style.display = 'none';
+    btn._location = null;
+  }
+}
+
+// ========================
+// 상호작용
+// ========================
+function doInteract() {
+  const key = document.getElementById('interactBtn')._location;
+  if (!key) return;
+
+  if (key === 'enlist') {
+    const myRank = players[myUid]?.rank || 'citizen';
+    if (myRank !== 'citizen') { showToast('이미 입대된 상태입니다.', 'info'); return; }
+    if (confirm('입대하시겠습니까?')) {
+      updateMyRank('army');
+      showToast('🪖 육군으로 입대했습니다!', 'success');
+    }
+  } else if (key === 'atm1' || key === 'atm2') {
+    doATM();
+  } else if (key === 'shop') {
+    openShop();
+  }
+}
+
+function doATM() {
+  const roll = Math.random();
+  if (roll < 0.35) {
+    // 35% 확률로 지명수배
+    setWanted(myUid, true);
+    showToast('🚨 ATM 강탈 감지! 지명수배 처리되었습니다. +30코인', 'error');
+    addCoins(30);
+  } else {
+    addCoins(30);
+    showToast('💰 ATM에서 30코인을 얻었습니다!', 'success');
+  }
+}
+
+function addCoins(amount) {
+  if (!myData) return;
+  myData.coins = (myData.coins || 0) + amount;
+  db.collection('players').doc(myUid).update({ coins: myData.coins });
+  document.getElementById('hudCoins').textContent = myData.coins;
+}
+
+function setWanted(uid, val) {
+  db.collection('players').doc(uid).update({ wanted: val });
+  if (uid === myUid) {
+    myData.wanted = val;
+    document.getElementById('hudWanted').style.display = val ? 'inline' : 'none';
+    if (players[myUid]) players[myUid].wanted = val;
+  }
+}
+
+function updateMyRank(rankId) {
+  db.collection('players').doc(myUid).update({ rank: rankId });
+  if (myData) myData.rank = rankId;
+  if (players[myUid]) players[myUid].rank = rankId;
+  document.getElementById('hudRank').textContent = getRank(rankId).name;
+}
+
+// ========================
+// 자동 진급 체크
+// ========================
+function checkAutoPromotion() {
+  if (!myData) return;
+  const mins = myData.totalMinutes || 0;
+  const kills = myData.kills || 0;
+  const currentRank = getRank(myData.rank || 'citizen');
+
+  // 자동 진급 가능한 계급들
+  const autoPRanks = RANKS.filter(r => r.requiredMinutes).sort((a,b) => a.order - b.order);
+
+  let newRank = null;
+  for (const r of autoPRanks) {
+    if (currentRank.order >= r.order) continue;
+    if (mins >= r.requiredMinutes && (r.requiredKills === undefined || kills >= r.requiredKills)) {
+      newRank = r;
+    }
+  }
+  if (newRank) {
+    updateMyRank(newRank.id);
+    showToast(`🎖 진급! ${newRank.name}으로 진급했습니다!`, 'success');
+  }
+}
+
+// ========================
+// 접속 시간 타이머
+// ========================
+function startPlayTimer() {
+  playTimer = setInterval(async () => {
+    sessionMinutes++;
+    // 오늘 자정 초기화 여부는 서버에서 체크
+    const now = new Date();
+    const todayKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+
+    if (!myData) return;
+    if (myData.lastPlayDate !== todayKey) {
+      myData.todayMinutes = 0;
+      myData.lastPlayDate = todayKey;
+    }
+    myData.todayMinutes = (myData.todayMinutes || 0) + 1;
+    myData.totalMinutes = (myData.totalMinutes || 0) + 1;
+
+    document.getElementById('hudTime').textContent = `${myData.todayMinutes}분`;
+
+    await db.collection('players').doc(myUid).update({
+      totalMinutes: myData.totalMinutes,
+      todayMinutes: myData.todayMinutes,
+      lastPlayDate: todayKey,
+    });
+
+    checkAutoPromotion();
+  }, 60000); // 1분마다
+}
+
+// ========================
+// 상점
+// ========================
+function openShop() {
+  const shopItems = document.getElementById('shopItems');
+  shopItems.innerHTML = '';
+  SHOP_ITEMS.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'shop-item';
+    div.innerHTML = `
+      <div class="item-info">${item.emoji} ${item.name}</div>
+      <div class="item-price">${item.price}코인</div>
+      <button data-id="${item.id}">구매</button>
+    `;
+    div.querySelector('button').addEventListener('click', () => buyItem(item));
+    shopItems.appendChild(div);
+  });
+  document.getElementById('shopModal').style.display = 'flex';
+}
+
+function buyItem(item) {
+  if (!myData) return;
+  if ((myData.coins || 0) < item.price) { showToast('코인이 부족합니다!', 'error'); return; }
+  myData.coins -= item.price;
+  myData.inventory = myData.inventory || [];
+  myData.inventory.push(item.id);
+  db.collection('players').doc(myUid).update({ coins: myData.coins, inventory: myData.inventory });
+  document.getElementById('hudCoins').textContent = myData.coins;
+  showToast(`${item.emoji} ${item.name} 구매 완료!`, 'success');
+}
+
+function openInventory() {
+  const el = document.getElementById('inventoryItems');
+  el.innerHTML = '';
+  const inv = myData?.inventory || [];
+  if (!inv.length) { el.innerHTML = '<p style="color:#94a3b8">아이템 없음</p>'; }
+  const counts = {};
+  inv.forEach(id => counts[id] = (counts[id] || 0) + 1);
+  Object.entries(counts).forEach(([id, cnt]) => {
+    const item = SHOP_ITEMS.find(s => s.id === id);
+    if (!item) return;
+    const div = document.createElement('div');
+    div.className = 'shop-item';
+    div.innerHTML = `<div>${item.emoji} ${item.name}</div><div style="color:#94a3b8">x${cnt}</div>`;
+    el.appendChild(div);
+  });
+  document.getElementById('inventoryModal').style.display = 'flex';
+}
+
+// ========================
+// 관리자 패널
+// ========================
+function openAdmin() {
+  // 계급 선택 옵션
+  const sel = document.getElementById('adminRankSelect');
+  sel.innerHTML = RANKS.map(r => `<option value="${r.id}">${r.group} - ${r.name}</option>`).join('');
+
+  // 플레이어 목록
+  const list = document.getElementById('adminPlayerList');
+  list.innerHTML = '';
+  Object.entries(players).forEach(([uid, p]) => {
+    if (!p) return;
+    const div = document.createElement('div');
+    div.className = 'player-list-item';
+    div.innerHTML = `
+      <span>${p.nickname || '?'}</span>
+      <span class="p-rank">${getRank(p.rank || 'citizen').name}</span>
+      ${p.wanted ? '<span style="color:#f87171">🚨수배</span>' : ''}
+      ${p.cuffed ? '<span style="color:#a78bfa">⛓수갑</span>' : ''}
+      <span style="color:#94a3b8;font-size:11px">${uid.slice(0,6)}</span>
+    `;
+    div.addEventListener('click', () => {
+      document.getElementById('adminTargetUid').value = uid;
+    });
+    list.appendChild(div);
+  });
+
+  document.getElementById('adminModal').style.display = 'flex';
+}
+
+async function adminAction(action) {
+  const target = document.getElementById('adminTargetUid').value.trim();
+  if (!target) { showToast('대상을 입력하세요', 'error'); return; }
+
+  // uid로 직접 or 닉네임 검색
+  let targetUid = target;
+  if (target.length < 20) {
+    // 닉네임 검색
+    const snap = await db.collection('players').where('nickname', '==', target).limit(1).get();
+    if (snap.empty) { showToast('플레이어를 찾을 수 없습니다', 'error'); return; }
+    targetUid = snap.docs[0].id;
+  }
+
+  if (action === 'rank') {
+    const rankId = document.getElementById('adminRankSelect').value;
+    await db.collection('players').doc(targetUid).update({ rank: rankId });
+    showToast(`계급 변경 완료: ${getRank(rankId).name}`, 'success');
+  } else if (action === 'warn') {
+    const doc = await db.collection('players').doc(targetUid).get();
+    const warns = (doc.data()?.warnings || 0) + 1;
+    await db.collection('players').doc(targetUid).update({ warnings: warns });
+    showToast(`경고 ${warns}회 부여`, 'success');
+    if (warns >= 4) {
+      await db.collection('players').doc(targetUid).update({ rank: 'citizen' });
+      showToast('경고 4회 → 강제 제대 처리', 'error');
+    }
+  } else if (action === 'unwarn') {
+    const doc = await db.collection('players').doc(targetUid).get();
+    const warns = Math.max(0, (doc.data()?.warnings || 0) - 1);
+    await db.collection('players').doc(targetUid).update({ warnings: warns });
+    showToast(`경고 ${warns}회로 감소`, 'success');
+  } else if (action === 'wanted') {
+    const doc = await db.collection('players').doc(targetUid).get();
+    const isWanted = doc.data()?.wanted;
+    await db.collection('players').doc(targetUid).update({ wanted: !isWanted });
+    showToast(isWanted ? '지명수배 해제' : '지명수배 처리', isWanted ? 'success' : 'error');
+  }
+}
+
+// ========================
+// 타 플레이어 상호작용 (클릭)
+// ========================
+canvas.addEventListener('click', (e) => {
+  if (!myUid || !players[myUid]) return;
+  const mx = e.clientX;
+  const my = e.clientY - 48;
+
+  Object.entries(players).forEach(([uid, p]) => {
+    if (uid === myUid || !p) return;
+    const sx = p.x * TILE - camX;
+    const sy = p.y * TILE - camY;
+    if (mx >= sx && mx <= sx + TILE && my >= sy && my <= sy + TILE) {
+      showPlayerActions(uid, p);
+    }
+  });
+});
+
+function showPlayerActions(uid, p) {
+  const myRank = players[myUid]?.rank || 'citizen';
+  const myRankObj = getRank(myRank);
+  const targetRank = getRank(p.rank || 'citizen');
+
+  let actions = `<b>${getRank(p.rank||'citizen').name} ${p.nickname}</b><br><br>`;
+
+  // 지명수배자 사살
+  if (p.wanted && !p.cuffed) {
+    actions += `<button id="pa-kill">🔫 사살</button> `;
+  }
+  // 수갑 (군사경찰 이상)
+  if (canCuff(myRank) && !p.cuffed) {
+    actions += `<button id="pa-cuff">⛓ 수갑</button> `;
+  }
+  if (canCuff(myRank) && p.cuffed) {
+    actions += `<button id="pa-uncuff">🔓 수갑 해제</button> `;
+  }
+
+  const modal = document.createElement('div');
+  modal.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:200`;
+  modal.innerHTML = `<div style="background:#1e293b;border-radius:12px;padding:20px;min-width:200px;border:1px solid #334155">
+    ${actions}
+    <br><br><button id="pa-close" style="background:#374151;color:#eee;border:none;padding:6px 14px;border-radius:6px;cursor:pointer">닫기</button>
+  </div>`;
+  document.body.appendChild(modal);
+
+  modal.querySelector('#pa-close')?.addEventListener('click', () => modal.remove());
+
+  modal.querySelector('#pa-kill')?.addEventListener('click', () => {
+    modal.remove();
+    if (!p.wanted) { showToast('지명수배자가 아닙니다!', 'error'); return; }
+    // 사살
+    db.collection('players').doc(uid).update({ wanted: false, dead: true });
+    // 내 사살 수 증가
+    myData.kills = (myData.kills || 0) + 1;
+    db.collection('players').doc(myUid).update({ kills: myData.kills });
+    document.getElementById('hudKills').textContent = myData.kills;
+    showToast(`🔫 ${p.nickname} 사살!`, 'success');
+    checkAutoPromotion();
+  });
+
+  modal.querySelector('#pa-cuff')?.addEventListener('click', () => {
+    modal.remove();
+    if (!canCuff(myRank)) { showToast('수갑 사용 권한 없음', 'error'); return; }
+    db.collection('players').doc(uid).update({ cuffed: true });
+    showToast(`⛓ ${p.nickname} 수갑 착용`, 'success');
+  });
+
+  modal.querySelector('#pa-uncuff')?.addEventListener('click', () => {
+    modal.remove();
+    db.collection('players').doc(uid).update({ cuffed: false });
+    showToast(`🔓 ${p.nickname} 수갑 해제`, 'success');
+  });
+
+  // 수갑 있는 사람 사살 시도 → 역 지명수배
+  modal.querySelector('#pa-kill')?.addEventListener('click', () => {
+    if (p.cuffed) {
+      setWanted(myUid, true);
+      showToast('수갑 대상 사살! 지명수배 처리됩니다.', 'error');
+    }
+  }, { once: true });
+}
+
+// ========================
+// 토스트
+// ========================
+function showToast(msg, type = 'info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = type === 'error' ? '#dc2626' : type === 'success' ? '#16a34a' : '#1d4ed8';
+  t.style.display = 'block';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.display = 'none'; }, 3000);
+}
+
+// ========================
+// 로그인/회원가입
+// ========================
+let isRegisterMode = false;
+
+document.addEventListener('DOMContentLoaded', () => {
+  // 탭 전환
+  document.getElementById('tabLogin').addEventListener('click', () => {
+    isRegisterMode = false;
+    document.getElementById('tabLogin').classList.add('active');
+    document.getElementById('tabRegister').classList.remove('active');
+    document.getElementById('nicknameInput').style.display = 'none';
+    document.getElementById('authBtn').textContent = '로그인';
+  });
+  document.getElementById('tabRegister').addEventListener('click', () => {
+    isRegisterMode = true;
+    document.getElementById('tabRegister').classList.add('active');
+    document.getElementById('tabLogin').classList.remove('active');
+    document.getElementById('nicknameInput').style.display = 'block';
+    document.getElementById('authBtn').textContent = '회원가입';
+  });
+
+  document.getElementById('authBtn').addEventListener('click', handleAuth);
+  document.getElementById('hudLogout').addEventListener('click', () => auth.signOut());
+  document.getElementById('interactBtn').addEventListener('click', doInteract);
+  document.getElementById('shopClose').addEventListener('click', () => document.getElementById('shopModal').style.display = 'none');
+  document.getElementById('inventoryClose').addEventListener('click', () => document.getElementById('inventoryModal').style.display = 'none');
+  document.getElementById('adminClose').addEventListener('click', () => document.getElementById('adminModal').style.display = 'none');
+  document.getElementById('hudInven').addEventListener('click', openInventory);
+  document.getElementById('hudAdmin').addEventListener('click', openAdmin);
+
+  document.getElementById('adminSetRank').addEventListener('click', () => adminAction('rank'));
+  document.getElementById('adminWarn').addEventListener('click', () => adminAction('warn'));
+  document.getElementById('adminUnwarn').addEventListener('click', () => adminAction('unwarn'));
+  document.getElementById('adminSetWanted').addEventListener('click', () => adminAction('wanted'));
+
+  // 키보드
+  document.addEventListener('keydown', e => {
+    keys[e.key.toLowerCase()] = true;
+    if (e.key.toLowerCase() === 'f') doInteract();
+  });
+  document.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+  // 이동 루프
+  setInterval(movePlayer, 50);
+
+  // Firebase Auth
+  auth.onAuthStateChanged(async user => {
+    if (user) {
+      myUid = user.uid;
+      await loadMyData();
+      startGame();
+    } else {
+      stopGame();
+    }
+  });
+});
+
+async function handleAuth() {
+  const email = document.getElementById('emailInput').value.trim();
+  const pw = document.getElementById('passwordInput').value;
+  const nick = document.getElementById('nicknameInput').value.trim();
+  const errEl = document.getElementById('authError');
+  errEl.textContent = '';
+
+  try {
+    if (isRegisterMode) {
+      if (!nick) { errEl.textContent = '닉네임을 입력하세요'; return; }
+      const cred = await auth.createUserWithEmailAndPassword(email, pw);
+      // 초기 데이터 생성
+      await db.collection('players').doc(cred.user.uid).set({
+        nickname: nick,
+        rank: 'citizen',
+        coins: 100,
+        kills: 0,
+        warnings: 0,
+        totalMinutes: 0,
+        todayMinutes: 0,
+        lastPlayDate: '',
+        wanted: false,
+        cuffed: false,
+        inventory: [],
+        x: 5, y: 17,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+    } else {
+      await auth.signInWithEmailAndPassword(email, pw);
+    }
+  } catch(e) {
+    errEl.textContent = e.message;
+  }
+}
+
+async function loadMyData() {
+  const doc = await db.collection('players').doc(myUid).get();
+  if (doc.exists) {
+    myData = doc.data();
+    myX = myData.x || 5;
+    myY = myData.y || 17;
+  }
+}
+
+function startGame() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('hud').style.display = 'flex';
+
+  // HUD 업데이트
+  document.getElementById('hudName').textContent = myData.nickname;
+  document.getElementById('hudRank').textContent = getRank(myData.rank || 'citizen').name;
+  document.getElementById('hudCoins').textContent = myData.coins || 0;
+  document.getElementById('hudTime').textContent = `${myData.todayMinutes || 0}분`;
+  document.getElementById('hudKills').textContent = myData.kills || 0;
+  if (myData.wanted) document.getElementById('hudWanted').style.display = 'inline';
+  if (myData.cuffed) document.getElementById('hudCuffed').style.display = 'inline';
+  if (canAdmin(myData.rank || 'citizen')) document.getElementById('hudAdmin').style.display = 'inline';
+
+  // 내 위치 초기화
+  players[myUid] = {
+    ...myData,
+    x: myX, y: myY,
+  };
+
+  // 위치 등록
+  db.collection('players').doc(myUid).update({ x: myX, y: myY, online: true });
+
+  // 실시간 플레이어 리스너
+  unsubPlayers = db.collection('players').where('online', '==', true).onSnapshot(snap => {
+    snap.docChanges().forEach(change => {
+      const uid = change.doc.id;
+      if (change.type === 'removed') {
+        delete players[uid];
+      } else {
+        const data = change.doc.data();
+        players[uid] = { ...data };
+        if (uid === myUid) {
+          // 내 데이터 동기화
+          myData = { ...myData, ...data };
+          document.getElementById('hudRank').textContent = getRank(data.rank || 'citizen').name;
+          document.getElementById('hudCoins').textContent = data.coins || 0;
+          document.getElementById('hudKills').textContent = data.kills || 0;
+          document.getElementById('hudWanted').style.display = data.wanted ? 'inline' : 'none';
+          document.getElementById('hudCuffed').style.display = data.cuffed ? 'inline' : 'none';
+          if (canAdmin(data.rank || 'citizen')) document.getElementById('hudAdmin').style.display = 'inline';
+        }
+      }
+    });
+  });
+
+  startPlayTimer();
+  render();
+}
+
+function stopGame() {
+  if (myUid) db.collection('players').doc(myUid).update({ online: false }).catch(()=>{});
+  if (unsubPlayers) unsubPlayers();
+  if (playTimer) clearInterval(playTimer);
+  myUid = null; myData = null; players = {};
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('hud').style.display = 'none';
+}
+
+// 탭 닫을 때 offline 처리
+window.addEventListener('beforeunload', () => {
+  if (myUid) db.collection('players').doc(myUid).update({ online: false });
+});
+</script>
+</body>
+</html>
